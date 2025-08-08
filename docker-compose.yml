@@ -1,0 +1,47 @@
+services:
+  postgres:
+    image: postgres
+    container_name: ${POSTGRES_CONTAINER_NAME:-db}
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-my_database}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - holidays
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+  app:
+    build: .
+    container_name: ${APP_CONTAINER_NAME:-holidays-api-app}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      RUN_SEED: ${RUN_SEED:-true}
+      APP_PORT: ${APP_PORT:-3000}
+      JWT_SECRET: ${JWT_SECRET:-holiday}
+      DATABASE_URL: ${DATABASE_URL:-postgres://postgres:postgres@db:5432/my_database}
+      SEED_FROM: ${SEED_FROM:-2025}
+      SEED_TO: ${SEED_TO:-2030}
+      SEED_COUNTRY: ${SEED_COUNTRY:-RU}
+    ports:
+      - "${APP_PORT:-3000}:${APP_PORT:-3000}"
+    networks:
+      - holidays
+    restart: always
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+
+networks:
+  holidays:
+
+volumes:
+  pgdata:
+    driver: local
